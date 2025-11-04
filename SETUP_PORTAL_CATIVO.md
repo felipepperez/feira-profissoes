@@ -96,28 +96,45 @@ ENABLE_DNS=true
 
 ### 5. Iniciar o Servidor
 
-**Opção 1: Portal Cativo Completo (porta 80 + DNS) - RECOMENDADO**
+**Windows:**
 
-```bash
-# Linux/macOS (requer privilégios de root para porta 80 e DNS)
-sudo npm run start:captive:sudo
-```
+1. **Criar arquivo `.env`** na raiz do projeto:
+   ```env
+   LOCAL_IP=192.168.0.103
+   PORT=80
+   ENABLE_DNS=true
+   NODE_ENV=production
+   ```
 
-**Opção 2: Apenas DNS (porta 80, sem servidor DNS próprio)**
+2. **Iniciar Portal Cativo:**
+   - Execute `start-captive.bat` como **Administrador** (clique com botão direito → Executar como administrador)
+   - Ou use: `npm run start:captive` (após configurar o `.env`)
 
-```bash
-# Configure DNS no roteador e execute:
-sudo PORT=80 npm start
-```
+3. **Desenvolvimento:**
+   - Execute `start-dev.bat`
+   - Ou use: `npm run start:dev`
 
-**Opção 3: Desenvolvimento (porta 3001, sem DNS)**
+**Linux/macOS:**
 
-```bash
-# Para desenvolvimento local
-npm run start:dev
-# ou
-npm run dev
-```
+1. **Criar arquivo `.env`** na raiz do projeto:
+   ```env
+   LOCAL_IP=192.168.0.103
+   PORT=80
+   ENABLE_DNS=true
+   NODE_ENV=production
+   ```
+
+2. **Iniciar Portal Cativo:**
+   ```bash
+   sudo npm run start:captive
+   ```
+
+3. **Desenvolvimento:**
+   ```bash
+   npm run start:dev
+   # ou
+   npm run dev
+   ```
 
 ## 🔧 Configuração do Roteador
 
@@ -197,6 +214,24 @@ Configure cada dispositivo para usar o servidor como DNS:
 
 ## 🎯 Resumo dos Comandos
 
+**Windows:**
+
+```batch
+REM Instalar dependências
+npm run install-all
+
+REM Build do React
+npm run build
+
+REM Portal Cativo (Execute como Administrador)
+start-captive.bat
+
+REM Desenvolvimento
+start-dev.bat
+```
+
+**Linux/macOS:**
+
 ```bash
 # Instalar dependências
 npm run install-all
@@ -204,15 +239,14 @@ npm run install-all
 # Build do React
 npm run build
 
-# Iniciar Portal Cativo (porta 80 + DNS) - RECOMENDADO
-sudo npm run start:captive:sudo
-
-# Iniciar servidor (porta 80, sem DNS próprio)
-sudo PORT=80 npm start
+# Portal Cativo (porta 80 + DNS)
+sudo npm run start:captive
 
 # Desenvolvimento (porta 3001)
 npm run start:dev
 # ou
 npm run dev
 ```
+
+**Nota:** No Windows, crie o arquivo `.env` com as configurações antes de iniciar o servidor. Veja `.env.example` para um exemplo.
 
