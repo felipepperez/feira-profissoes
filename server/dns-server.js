@@ -3,6 +3,7 @@ const dns2 = require('dns2');
 const { Packet } = dns2;
 
 const PORT = 53;
+// Lê LOCAL_IP do arquivo .env ou usa valor padrão
 const LOCAL_IP = process.env.LOCAL_IP || '192.168.0.103';
 
 const server = dns2.createServer({

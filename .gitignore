@@ -7,4 +7,3 @@ server/game_data.db
 .env
 .env.local
 .DS_Store
-*.bat

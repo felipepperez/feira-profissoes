@@ -641,9 +641,10 @@ setInterval(() => {
 captivePortal.setupCaptivePortal(app, buildPath);
 
 // Porta padrão: 80 para portal cativo, 3001 para desenvolvimento
+// Lê do arquivo .env ou usa valores padrão
 const DEFAULT_PORT = process.env.NODE_ENV === 'production' || process.env.ENABLE_DNS === 'true' ? 80 : 3001;
-const PORT = process.env.PORT || DEFAULT_PORT;
-const ENABLE_DNS = process.env.ENABLE_DNS === 'true';
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : DEFAULT_PORT;
+const ENABLE_DNS = process.env.ENABLE_DNS === 'true' || process.env.ENABLE_DNS === true;
 
 // Iniciar servidor DNS se habilitado
 if (ENABLE_DNS) {
