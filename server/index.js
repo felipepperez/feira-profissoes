@@ -1,7 +1,11 @@
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const socketIo = require('socket.io');
 const cors = require('cors');
+const dbModule = require('./database');
+const dnsServer = require('./dns-server');
+const captivePortal = require('./captive-portal');
 
 const app = express();
 const server = http.createServer(app);
@@ -15,9 +19,48 @@ const io = socketIo(server, {
 app.use(cors());
 app.use(express.json());
 
+// Servir arquivos estáticos do build do React
+const buildPath = path.join(__dirname, '..', 'client', 'build');
+app.use(express.static(buildPath));
+
+// Nota: O portal cativo será configurado DEPOIS das rotas Socket.IO
+// para garantir que o Socket.IO funcione corretamente
+
+let db = null;
 let players = {};
 let globalLeaderboard = {};
 let activeGames = {};
+
+async function initializeDatabase() {
+  try {
+    db = await dbModule.initDatabase();
+    await loadDataFromDatabase();
+    console.log('Dados carregados do banco de dados');
+  } catch (error) {
+    console.error('Erro ao inicializar banco de dados:', error);
+  }
+}
+
+async function loadDataFromDatabase() {
+  try {
+    const dbPlayers = await dbModule.getAllPlayers(db);
+    const leaderboardData = await dbModule.getLeaderboard(db);
+    
+    players = {};
+    globalLeaderboard = {};
+    
+    dbPlayers.forEach(player => {
+      players[player.name] = {
+        name: player.name,
+        bestScore: player.best_score || 0,
+        totalGames: player.total_games || 0
+      };
+      globalLeaderboard[player.name] = player.best_score || 0;
+    });
+  } catch (error) {
+    console.error('Erro ao carregar dados do banco:', error);
+  }
+}
 
 const TOTAL_CHALLENGES = 10;
 
@@ -308,40 +351,72 @@ function getGlobalLeaderboard() {
 io.on('connection', (socket) => {
   console.log(`Cliente conectado: ${socket.id}`);
 
-  socket.on('student-join', (studentName) => {
+  socket.on('student-join', async (studentName) => {
     socket.studentName = studentName || `Jogador ${socket.id.slice(0, 6)}`;
     
-    if (!players[socket.studentName]) {
-      players[socket.studentName] = {
+    try {
+      if (db) {
+        const dbPlayer = await dbModule.getPlayer(db, socket.studentName);
+        if (dbPlayer) {
+          players[socket.studentName] = {
+            name: socket.studentName,
+            bestScore: dbPlayer.best_score || 0,
+            totalGames: dbPlayer.total_games || 0
+          };
+          globalLeaderboard[socket.studentName] = dbPlayer.best_score || 0;
+        } else {
+          await dbModule.createOrUpdatePlayer(db, socket.studentName, 0, 0);
+          players[socket.studentName] = {
+            name: socket.studentName,
+            bestScore: 0,
+            totalGames: 0
+          };
+          globalLeaderboard[socket.studentName] = 0;
+        }
+      } else {
+        if (!players[socket.studentName]) {
+          players[socket.studentName] = {
+            name: socket.studentName,
+            bestScore: globalLeaderboard[socket.studentName] || 0,
+            totalGames: 0
+          };
+        }
+        
+        if (!globalLeaderboard[socket.studentName]) {
+          globalLeaderboard[socket.studentName] = 0;
+        }
+      }
+      
+      socket.emit('welcome', {
         name: socket.studentName,
-        bestScore: globalLeaderboard[socket.studentName] || 0,
-        totalGames: 0
-      };
+        bestScore: globalLeaderboard[socket.studentName],
+        leaderboard: getGlobalLeaderboard()
+      });
+      
+      io.emit('player-joined', {
+        players: Object.values(players),
+        leaderboard: getGlobalLeaderboard()
+      });
+      
+      console.log(`Jogador conectado: ${socket.studentName} (${socket.id})`);
+    } catch (error) {
+      console.error('Erro ao processar join do jogador:', error);
     }
-    
-    if (!globalLeaderboard[socket.studentName]) {
-      globalLeaderboard[socket.studentName] = 0;
-    }
-    
-    socket.emit('welcome', {
-      name: socket.studentName,
-      bestScore: globalLeaderboard[socket.studentName],
-      leaderboard: getGlobalLeaderboard()
-    });
-    
-    io.emit('player-joined', {
-      players: Object.values(players),
-      leaderboard: getGlobalLeaderboard()
-    });
-    
-    console.log(`Jogador conectado: ${socket.studentName} (${socket.id})`);
   });
 
-  socket.on('dashboard-join', ({ password }) => {
+  socket.on('dashboard-join', async ({ password }) => {
     const ADMIN_PASSWORD = 'admin123';
     if (password !== ADMIN_PASSWORD) {
       socket.emit('auth-error', { message: 'Senha incorreta!' });
       return;
+    }
+    
+    try {
+      if (db) {
+        await loadDataFromDatabase();
+      }
+    } catch (error) {
+      console.error('Erro ao recarregar dados para dashboard:', error);
     }
     
     socket.dashboard = true;
@@ -381,7 +456,7 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('submit-answer', (data) => {
+  socket.on('submit-answer', async (data) => {
     const game = activeGames[socket.id];
     if (!game || game.status !== 'playing' || !game.currentChallenge) return;
     
@@ -486,7 +561,7 @@ function startChallengeForPlayer(socketId) {
   }, 1000);
 }
 
-function endGameForPlayer(socketId) {
+async function endGameForPlayer(socketId) {
   const game = activeGames[socketId];
   if (!game) return;
   
@@ -510,6 +585,27 @@ function endGameForPlayer(socketId) {
   if (player) {
     player.bestScore = globalLeaderboard[playerName];
     player.totalGames++;
+  }
+  
+  try {
+    if (db) {
+      await dbModule.saveGameSession(db, playerName, finalScore);
+      
+      if (isNewRecord) {
+        await dbModule.updatePlayerScore(db, playerName, finalScore);
+      }
+      
+      await dbModule.incrementPlayerGames(db, playerName);
+      
+      const updatedPlayer = await dbModule.getPlayer(db, playerName);
+      if (updatedPlayer) {
+        player.bestScore = updatedPlayer.best_score || 0;
+        player.totalGames = updatedPlayer.total_games || 0;
+        globalLeaderboard[playerName] = updatedPlayer.best_score || 0;
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao salvar dados do jogo:', error);
   }
   
   const socket = io.sockets.sockets.get(socketId);
@@ -537,8 +633,67 @@ setInterval(() => {
   });
 }, 2000);
 
-const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
-  console.log(`Acesse http://localhost:${PORT}`);
+// Configurar portal cativo DEPOIS de configurar todas as rotas Socket.IO
+// Isso garante que o Socket.IO funcione antes do catch-all do portal cativo
+captivePortal.setupCaptivePortal(app, buildPath);
+
+// Porta padrão: 80 para portal cativo, 3001 para desenvolvimento
+const DEFAULT_PORT = process.env.NODE_ENV === 'production' || process.env.ENABLE_DNS === 'true' ? 80 : 3001;
+const PORT = process.env.PORT || DEFAULT_PORT;
+const ENABLE_DNS = process.env.ENABLE_DNS === 'true';
+
+// Iniciar servidor DNS se habilitado
+if (ENABLE_DNS) {
+  const dnsStarted = dnsServer.startDNSServer();
+  if (!dnsStarted) {
+    console.log('[INFO] Servidor DNS não iniciado. Configure o roteador para usar este servidor como DNS.');
+  }
+}
+
+function startServer() {
+  server.listen(PORT, '0.0.0.0', (err) => {
+    if (err) {
+      if (err.code === 'EACCES') {
+        console.error(`\n❌ Erro: Permissão negada para porta ${PORT}`);
+        console.error(`   Porta ${PORT} requer privilégios de root/administrador.`);
+        console.error(`   Execute com sudo: sudo npm run start:captive:sudo`);
+        process.exit(1);
+      } else if (err.code === 'EADDRINUSE') {
+        console.error(`\n❌ Erro: Porta ${PORT} já está em uso.`);
+        console.error(`   Feche o processo que está usando a porta ou use outra porta.`);
+        process.exit(1);
+      } else {
+        console.error(`\n❌ Erro ao iniciar servidor:`, err);
+        process.exit(1);
+      }
+      return;
+    }
+    const protocol = PORT === 443 ? 'https' : 'http';
+    const portDisplay = PORT === 80 || PORT === 443 ? '' : `:${PORT}`;
+    
+    console.log(`\n🚀 Servidor HTTP rodando na porta ${PORT}`);
+    console.log(`📱 Acesse ${protocol}://localhost${portDisplay} ou ${protocol}://${dnsServer.LOCAL_IP}${portDisplay}`);
+    console.log(`\n🌐 Portal Cativo Configurado:`);
+    console.log(`   - IP Local: ${dnsServer.LOCAL_IP}`);
+    console.log(`   - Porta HTTP: ${PORT}${PORT === 80 ? ' (padrão - não precisa digitar na URL)' : ''}`);
+    if (ENABLE_DNS) {
+      console.log(`   - Servidor DNS: Ativo (porta 53)`);
+    } else {
+      console.log(`   - Servidor DNS: Desabilitado (configure o roteador manualmente)`);
+    }
+    console.log(`\n📋 Configuração do Roteador:`);
+    console.log(`   1. Configure o DNS do roteador para: ${dnsServer.LOCAL_IP}`);
+    console.log(`   2. Ou configure cada dispositivo para usar: ${dnsServer.LOCAL_IP} como DNS`);
+    console.log(`\n💡 URL de Acesso:`);
+    console.log(`   - Portal Cativo: http://${dnsServer.LOCAL_IP}${portDisplay}`);
+    console.log(`   - Ou simplesmente: http://${dnsServer.LOCAL_IP}${PORT === 80 ? '' : ':' + PORT}`);
+    console.log(`\n`);
+  });
+}
+
+initializeDatabase().then(() => {
+  startServer();
+}).catch((error) => {
+  console.error('Erro ao inicializar servidor:', error);
+  startServer();
 });

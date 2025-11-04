@@ -7,7 +7,12 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "nodemon server/index.js",
     "client": "cd client && npm start",
-    "install-all": "npm install && cd client && npm install"
+    "install-all": "npm install && cd client && npm install",
+    "build": "cd client && npm run build",
+    "start:captive": "ENABLE_DNS=true PORT=80 node server/index.js",
+    "start:captive:sudo": "sudo ENABLE_DNS=true PORT=80 node server/index.js",
+    "start": "node server/index.js",
+    "start:dev": "PORT=3001 node server/index.js"
   },
   "keywords": ["websocket", "quiz", "socket.io", "react"],
   "author": "",
@@ -15,7 +20,9 @@
   "dependencies": {
     "express": "^4.18.2",
     "socket.io": "^4.7.2",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "sqlite3": "^5.1.6",
+    "dns2": "^2.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1",

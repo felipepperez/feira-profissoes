@@ -372,13 +372,7 @@ const GameInterface = () => {
       case 'direction':
         return (
           <div className="challenge-container">
-            <div 
-              style={{ 
-                fontSize: '8rem',
-                margin: '2rem auto',
-                textAlign: 'center'
-              }}
-            >
+            <div className="direction-display">
               {challenge.targetDirection}
             </div>
             <h3 style={{ marginBottom: '1rem', fontSize: '1.5rem' }}>
@@ -526,15 +520,9 @@ const GameInterface = () => {
         return (
           <div className="challenge-container">
             <h3 style={{ marginBottom: '1rem' }}>Qual é o {challenge.orderType === 'maior' ? 'maior' : 'menor'} número?</h3>
-            <div className="sequence-display">
+            <div className="sequence-display order-numbers">
               {challenge.numbers.map((num, index) => (
-                <span key={index} style={{ 
-                  fontSize: '2.5rem', 
-                  margin: '0 0.5rem',
-                  padding: '1rem',
-                  background: '#f5f5f5',
-                  borderRadius: '10px'
-                }}>
+                <span key={index} className="order-number-item">
                   {num}
                 </span>
               ))}
@@ -575,14 +563,13 @@ const GameInterface = () => {
       <div className="student-header">
         <h1>🎮 Desafio de Velocidade</h1>
         {nameSubmitted && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ fontSize: '0.9rem', color: '#666' }}>
+          <div className="student-header-actions">
+            <span className="student-name-display">
               {studentName}
             </span>
             <button 
               onClick={handleLogout} 
-              className="back-btn"
-              style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+              className="back-btn logout-btn-mobile"
             >
               Sair/Trocar Nome
             </button>
@@ -695,7 +682,7 @@ const GameInterface = () => {
         </div>
       ) : gameState.status === 'playing' && gameState.currentChallenge ? (
         <div className="question-screen">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div className="challenge-header-mobile">
             <h2 style={{ margin: 0 }}>Desafio {challengeNumber} / 10</h2>
             <div className="current-score" style={{ fontSize: '1.2rem' }}>
               Pontos: {score}

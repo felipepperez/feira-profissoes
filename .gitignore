@@ -1,9 +1,8 @@
 node_modules/
 client/node_modules/
-.DS_Store
+*.db
+*.sqlite
+*.sqlite3
+server/game_data.db
 .env
-*.log
-client/build/
-dist/
-.vscode/
-.idea/
+.DS_Store
