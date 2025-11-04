@@ -35,10 +35,21 @@ const AdminDashboard = () => {
       
       const getSocketUrl = () => {
         const hostname = window.location.hostname;
+        const port = window.location.port;
+        
+        // Se estiver em localhost, usar porta 3001 (desenvolvimento)
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
           return 'http://localhost:3001';
         }
-        return `http://${hostname}:3001`;
+        
+        // Se estiver na porta 80 (portal cativo), usar a mesma porta
+        // Se não tiver porta especificada (porta 80 padrão), usar porta 80
+        if (port === '' || port === '80') {
+          return `http://${hostname}`;
+        }
+        
+        // Caso contrário, usar a porta especificada
+        return `http://${hostname}:${port}`;
       };
       
       const newSocket = io(getSocketUrl());
