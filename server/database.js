@@ -18,9 +18,7 @@ function initDatabase() {
       db.run(`
         CREATE TABLE IF NOT EXISTS players (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          player_id TEXT UNIQUE NOT NULL,
-          name TEXT NOT NULL,
-          socket_id TEXT NOT NULL,
+          name TEXT UNIQUE NOT NULL,
           best_score INTEGER DEFAULT 0,
           total_games INTEGER DEFAULT 0,
           last_played DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -35,11 +33,10 @@ function initDatabase() {
       db.run(`
         CREATE TABLE IF NOT EXISTS game_sessions (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          player_id TEXT NOT NULL,
           player_name TEXT NOT NULL,
           score INTEGER NOT NULL,
           played_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (player_id) REFERENCES players(player_id)
+          FOREIGN KEY (player_name) REFERENCES players(name)
         )
       `, (err) => {
         if (err) {
@@ -53,11 +50,11 @@ function initDatabase() {
   });
 }
 
-function getPlayer(db, playerId) {
+function getPlayer(db, playerName) {
   return new Promise((resolve, reject) => {
     db.get(
-      'SELECT * FROM players WHERE player_id = ?',
-      [playerId],
+      'SELECT * FROM players WHERE name = ?',
+      [playerName],
       (err, row) => {
         if (err) {
           reject(err);
@@ -69,12 +66,12 @@ function getPlayer(db, playerId) {
   });
 }
 
-function createOrUpdatePlayer(db, playerId, playerName, socketId, bestScore = 0, totalGames = 0) {
+function createOrUpdatePlayer(db, playerName, bestScore = 0, totalGames = 0) {
   return new Promise((resolve, reject) => {
     db.run(
-      `INSERT OR IGNORE INTO players (player_id, name, socket_id, best_score, total_games) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [playerId, playerName, socketId, bestScore, totalGames],
+      `INSERT OR IGNORE INTO players (name, best_score, total_games) 
+       VALUES (?, ?, ?)`,
+      [playerName, bestScore, totalGames],
       function(err) {
         if (err) {
           reject(err);
@@ -82,13 +79,11 @@ function createOrUpdatePlayer(db, playerId, playerName, socketId, bestScore = 0,
           if (this.changes === 0) {
             db.run(
               `UPDATE players SET 
-               name = ?,
-               socket_id = ?,
                best_score = MAX(best_score, ?),
                total_games = total_games + ?,
                last_played = CURRENT_TIMESTAMP
-               WHERE player_id = ?`,
-              [playerName, socketId, bestScore, totalGames, playerId],
+               WHERE name = ?`,
+              [bestScore, totalGames, playerName],
               function(updateErr) {
                 if (updateErr) {
                   reject(updateErr);
@@ -106,14 +101,14 @@ function createOrUpdatePlayer(db, playerId, playerName, socketId, bestScore = 0,
   });
 }
 
-function updatePlayerScore(db, playerId, score) {
+function updatePlayerScore(db, playerName, score) {
   return new Promise((resolve, reject) => {
     db.run(
       `UPDATE players 
        SET best_score = MAX(best_score, ?),
            last_played = CURRENT_TIMESTAMP
-       WHERE player_id = ?`,
-      [score, playerId],
+       WHERE name = ?`,
+      [score, playerName],
       function(err) {
         if (err) {
           reject(err);
@@ -125,11 +120,11 @@ function updatePlayerScore(db, playerId, score) {
   });
 }
 
-function incrementPlayerGames(db, playerId) {
+function incrementPlayerGames(db, playerName) {
   return new Promise((resolve, reject) => {
     db.run(
-      'UPDATE players SET total_games = total_games + 1 WHERE player_id = ?',
-      [playerId],
+      'UPDATE players SET total_games = total_games + 1 WHERE name = ?',
+      [playerName],
       function(err) {
         if (err) {
           reject(err);
@@ -141,11 +136,11 @@ function incrementPlayerGames(db, playerId) {
   });
 }
 
-function saveGameSession(db, playerId, playerName, score) {
+function saveGameSession(db, playerName, score) {
   return new Promise((resolve, reject) => {
     db.run(
-      'INSERT INTO game_sessions (player_id, player_name, score) VALUES (?, ?, ?)',
-      [playerId, playerName, score],
+      'INSERT INTO game_sessions (player_name, score) VALUES (?, ?)',
+      [playerName, score],
       function(err) {
         if (err) {
           reject(err);
@@ -159,13 +154,11 @@ function saveGameSession(db, playerId, playerName, score) {
 
 function getLeaderboard(db, limit = 50) {
   return new Promise((resolve, reject) => {
-    // Agrupar por nome e pegar o melhor score de cada nome
     db.all(
-      `SELECT name, MAX(best_score) as score 
+      `SELECT name, best_score as score 
        FROM players 
        WHERE best_score > 0
-       GROUP BY name
-       ORDER BY score DESC 
+       ORDER BY best_score DESC 
        LIMIT ?`,
       [limit],
       (err, rows) => {
@@ -182,7 +175,7 @@ function getLeaderboard(db, limit = 50) {
 function getAllPlayers(db) {
   return new Promise((resolve, reject) => {
     db.all(
-      'SELECT player_id, name, socket_id, best_score, total_games FROM players ORDER BY last_played DESC',
+      'SELECT name, best_score, total_games FROM players ORDER BY last_played DESC',
       (err, rows) => {
         if (err) {
           reject(err);

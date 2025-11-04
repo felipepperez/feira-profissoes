@@ -52,15 +52,13 @@ async function loadDataFromDatabase() {
     players = {};
     globalLeaderboard = {};
     
-    // Carregar apenas para o leaderboard (agrupar por nome, pegar melhor score)
     dbPlayers.forEach(player => {
-      const playerName = player.name;
-      const playerScore = player.best_score || 0;
-      
-      // Para o leaderboard, manter apenas o melhor score por nome
-      if (!globalLeaderboard[playerName] || playerScore > globalLeaderboard[playerName]) {
-        globalLeaderboard[playerName] = playerScore;
-      }
+      players[player.name] = {
+        name: player.name,
+        bestScore: player.best_score || 0,
+        totalGames: player.total_games || 0
+      };
+      globalLeaderboard[player.name] = player.best_score || 0;
     });
   } catch (error) {
     console.error('Erro ao carregar dados do banco:', error);
@@ -468,7 +466,7 @@ io.on('connection', (socket) => {
     
     socket.dashboard = true;
     socket.emit('dashboard-state', {
-      players: Object.values(players).map(p => ({ name: p.name, bestScore: p.bestScore, totalGames: p.totalGames })),
+      players: Object.values(players),
       leaderboard: getGlobalLeaderboard(),
       activeGamesCount: Object.keys(activeGames).length
     });
@@ -477,13 +475,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('start-game', () => {
-    if (!socket.studentName || !socket.playerId) return;
+    if (!socket.studentName) return;
     
     const playerName = socket.studentName;
-    const playerId = socket.playerId;
     
     activeGames[socket.id] = {
-      playerId: playerId,
       playerName: playerName,
       challengeIndex: 0,
       currentScore: 0,
@@ -509,7 +505,7 @@ io.on('connection', (socket) => {
     const game = activeGames[socket.id];
     if (!game || game.status !== 'playing' || !game.currentChallenge) return;
     
-    const player = players[game.playerId];
+    const player = players[game.playerName];
     if (!player) return;
     
     const challenge = game.currentChallenge;
@@ -545,23 +541,18 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    if (socket.studentName && socket.playerId) {
+    if (socket.studentName) {
       if (activeGames[socket.id]) {
         delete activeGames[socket.id];
       }
       
-      // Remover jogador da lista de conectados
-      if (players[socket.playerId]) {
-        delete players[socket.playerId];
-      }
-      
       io.emit('player-left', {
-        players: Object.values(players).map(p => ({ name: p.name, bestScore: p.bestScore, totalGames: p.totalGames })),
+        players: Object.values(players),
         leaderboard: getGlobalLeaderboard(),
         activeGamesCount: Object.keys(activeGames).length
       });
       
-      console.log(`Jogador desconectado: ${socket.studentName} (${socket.id}) - Player ID: ${socket.playerId}`);
+      console.log(`Jogador desconectado: ${socket.studentName} (${socket.id})`);
     }
   });
 });
@@ -626,53 +617,36 @@ async function endGameForPlayer(socketId) {
   
   game.status = 'finished';
   
-  const playerId = game.playerId;
   const playerName = game.playerName;
   const finalScore = game.currentScore;
+  const previousBest = globalLeaderboard[playerName] || 0;
+  const isNewRecord = finalScore > previousBest;
   
-  // Verificar se é recorde para este jogador específico (playerId)
-  const player = players[playerId];
-  const playerPreviousBest = player ? player.bestScore : 0;
-  const isNewRecordForPlayer = finalScore > playerPreviousBest;
-  
-  // Verificar se é recorde global para este nome (melhor score entre todos com mesmo nome)
-  const globalBestForName = globalLeaderboard[playerName] || 0;
-  const isNewGlobalRecord = finalScore > globalBestForName;
-  
-  // Atualizar melhor score do jogador específico
-  if (player) {
-    if (isNewRecordForPlayer) {
-      player.bestScore = finalScore;
-    }
-    player.totalGames++;
+  if (finalScore > previousBest) {
+    globalLeaderboard[playerName] = finalScore;
   }
   
-  // Atualizar leaderboard global (melhor score por nome)
-  if (isNewGlobalRecord) {
-    globalLeaderboard[playerName] = finalScore;
+  const player = players[playerName];
+  if (player) {
+    player.bestScore = globalLeaderboard[playerName];
+    player.totalGames++;
   }
   
   try {
     if (db) {
-      await dbModule.saveGameSession(db, playerId, playerName, finalScore);
+      await dbModule.saveGameSession(db, playerName, finalScore);
       
-      if (isNewRecordForPlayer) {
-        await dbModule.updatePlayerScore(db, playerId, finalScore);
+      if (isNewRecord) {
+        await dbModule.updatePlayerScore(db, playerName, finalScore);
       }
       
-      await dbModule.incrementPlayerGames(db, playerId);
+      await dbModule.incrementPlayerGames(db, playerName);
       
-      const updatedPlayer = await dbModule.getPlayer(db, playerId);
+      const updatedPlayer = await dbModule.getPlayer(db, playerName);
       if (updatedPlayer) {
-        if (player) {
-          player.bestScore = updatedPlayer.best_score || 0;
-          player.totalGames = updatedPlayer.total_games || 0;
-        }
-        
-        // Atualizar leaderboard global se for o melhor score para este nome
-        if (updatedPlayer.best_score > globalBestForName) {
-          globalLeaderboard[playerName] = updatedPlayer.best_score;
-        }
+        player.bestScore = updatedPlayer.best_score || 0;
+        player.totalGames = updatedPlayer.total_games || 0;
+        globalLeaderboard[playerName] = updatedPlayer.best_score || 0;
       }
     }
   } catch (error) {
@@ -681,12 +655,11 @@ async function endGameForPlayer(socketId) {
   
   const socket = io.sockets.sockets.get(socketId);
   if (socket) {
-    const playerBestScore = player ? player.bestScore : 0;
     socket.emit('game-end', {
       finalScore: finalScore,
-      bestScore: playerBestScore,
+      bestScore: globalLeaderboard[playerName],
       leaderboard: getGlobalLeaderboard(),
-      isNewRecord: isNewRecordForPlayer
+      isNewRecord: isNewRecord
     });
   }
   
