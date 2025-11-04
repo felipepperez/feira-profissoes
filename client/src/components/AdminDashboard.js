@@ -156,30 +156,46 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
-        <div className="stats-grid">
-          <div className="stat-card">
-            <h3>Jogadores Conectados</h3>
-            <div className="stat-value">{players.length}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '2rem', alignItems: 'start' }}>
+        <div>
+          <div className="stats-grid-compact">
+            <div className="stat-card-compact">
+              <h3>Jogadores Conectados</h3>
+              <div className="stat-value-compact">{players.length}</div>
+            </div>
+            <div className="stat-card-compact">
+              <h3>Jogos Ativos</h3>
+              <div className="stat-value-compact">{activeGamesCount}</div>
+            </div>
           </div>
-          <div className="stat-card">
-            <h3>Jogos Ativos</h3>
-            <div className="stat-value">{activeGamesCount}</div>
-          </div>
-          <div className="stat-card">
-            <h3>Total de Jogadores</h3>
-            <div className="stat-value">{leaderboard.length}</div>
-          </div>
+
+          {leaderboard.length > 0 && (
+            <div className="leaderboard" style={{ marginTop: '1.5rem' }}>
+              <h3>🏆 Ranking Geral</h3>
+              {leaderboard.map((entry, index) => (
+                <div key={index} className="leaderboard-item">
+                  <span>
+                    {index === 0 && '🥇'}
+                    {index === 1 && '🥈'}
+                    {index === 2 && '🥉'}
+                    {' '}
+                    {index + 1}. {entry.name}
+                  </span>
+                  <span>{entry.score} pts</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div className="qrcode-container">
-            <h3 style={{ marginBottom: '1rem', color: '#333', textAlign: 'center' }}>
+            <h3 style={{ marginBottom: '1rem', color: '#333', textAlign: 'center', fontSize: '1rem' }}>
               📶 Conectar ao Wi-Fi
             </h3>
             <div style={{ 
               background: 'white', 
-              padding: '1.5rem', 
+              padding: '1rem', 
               borderRadius: '12px',
               display: 'flex',
               flexDirection: 'column',
@@ -188,11 +204,11 @@ const AdminDashboard = () => {
             }}>
               <QRCode 
                 value={`WIFI:T:WPA;S:${wifiSSID};P:${wifiPassword};;`}
-                size={200}
-                style={{ marginBottom: '1rem' }}
+                size={180}
+                style={{ marginBottom: '0.5rem' }}
               />
               <p style={{ 
-                fontSize: '0.9rem', 
+                fontSize: '0.85rem', 
                 color: '#666', 
                 textAlign: 'center',
                 marginTop: '0.5rem',
@@ -201,7 +217,7 @@ const AdminDashboard = () => {
                 Rede: {wifiSSID}
               </p>
               <p style={{ 
-                fontSize: '0.8rem', 
+                fontSize: '0.75rem', 
                 color: '#999', 
                 textAlign: 'center'
               }}>
@@ -211,12 +227,12 @@ const AdminDashboard = () => {
           </div>
 
           <div className="qrcode-container">
-            <h3 style={{ marginBottom: '1rem', color: '#333', textAlign: 'center' }}>
+            <h3 style={{ marginBottom: '1rem', color: '#333', textAlign: 'center', fontSize: '1rem' }}>
               📱 Acessar o Quiz
             </h3>
             <div style={{ 
               background: 'white', 
-              padding: '1.5rem', 
+              padding: '1rem', 
               borderRadius: '12px',
               display: 'flex',
               flexDirection: 'column',
@@ -225,11 +241,11 @@ const AdminDashboard = () => {
             }}>
               <QRCode 
                 value={quizUrl}
-                size={200}
-                style={{ marginBottom: '1rem' }}
+                size={180}
+                style={{ marginBottom: '0.5rem' }}
               />
               <p style={{ 
-                fontSize: '0.85rem', 
+                fontSize: '0.75rem', 
                 color: '#666', 
                 textAlign: 'center',
                 wordBreak: 'break-all',
@@ -241,40 +257,6 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
-
-      {leaderboard.length > 0 && (
-        <div className="leaderboard">
-          <h3>🏆 Ranking Geral</h3>
-          {leaderboard.map((entry, index) => (
-            <div key={index} className="leaderboard-item">
-              <span>
-                {index === 0 && '🥇'}
-                {index === 1 && '🥈'}
-                {index === 2 && '🥉'}
-                {' '}
-                {index + 1}. {entry.name}
-              </span>
-              <span>{entry.score} pts</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {players.length > 0 && (
-        <div className="leaderboard" style={{ marginTop: '1rem' }}>
-          <h3>👥 Jogadores Online</h3>
-          {players.map((player, index) => (
-            <div key={index} className="leaderboard-item">
-              <span>
-                {player.bestScore > 0 ? '🏆' : '⏳'} 
-                {' '}
-                {player.name}
-              </span>
-              <span>{player.bestScore || 0} pts (melhor)</span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 };

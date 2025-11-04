@@ -52,13 +52,15 @@ async function loadDataFromDatabase() {
     players = {};
     globalLeaderboard = {};
     
+    // Carregar apenas para o leaderboard (agrupar por nome, pegar melhor score)
     dbPlayers.forEach(player => {
-      players[player.name] = {
-        name: player.name,
-        bestScore: player.best_score || 0,
-        totalGames: player.total_games || 0
-      };
-      globalLeaderboard[player.name] = player.best_score || 0;
+      const playerName = player.name;
+      const playerScore = player.best_score || 0;
+      
+      // Para o leaderboard, manter apenas o melhor score por nome
+      if (!globalLeaderboard[playerName] || playerScore > globalLeaderboard[playerName]) {
+        globalLeaderboard[playerName] = playerScore;
+      }
     });
   } catch (error) {
     console.error('Erro ao carregar dados do banco:', error);
@@ -159,16 +161,58 @@ function generateReactionChallenge() {
 }
 
 function generateSequenceChallenge() {
-  const sequenceLength = 4;
-  const sequence = [];
-  const options = ['🔴', '🔵', '🟢', '🟡'];
+  // Padrões de sequência que fazem sentido
+  const patterns = [
+    // Padrão alternado simples
+    ['🔴', '🔵', '🔴', '🔵', '🔴'],
+    ['🟢', '🟡', '🟢', '🟡', '🟢'],
+    ['⭐', '💎', '⭐', '💎', '⭐'],
+    // Padrão de repetição
+    ['🔴', '🔴', '🔵', '🔵', '🔴'],
+    ['🟢', '🟢', '🟡', '🟡', '🟢'],
+    ['⭐', '⭐', '💎', '💎', '⭐'],
+    // Padrão crescente
+    ['🔴', '🔴', '🔴', '🔵', '🔵'],
+    ['🟢', '🟢', '🟢', '🟡', '🟡'],
+    // Padrão de três elementos
+    ['🔴', '🔵', '🟢', '🔴', '🔵'],
+    ['⭐', '💎', '🔴', '⭐', '💎'],
+    // Padrão mais complexo
+    ['🔴', '🔵', '🔴', '🔵', '🟢'],
+    ['🟢', '🟡', '🟢', '🟡', '🔴']
+  ];
   
-  for (let i = 0; i < sequenceLength; i++) {
-    sequence.push(options[Math.floor(Math.random() * options.length)]);
+  // Selecionar um padrão aleatório
+  const selectedPattern = patterns[Math.floor(Math.random() * patterns.length)];
+  const sequence = [...selectedPattern];
+  const firstItem = sequence[0];
+  
+  // Criar opções de resposta únicas
+  // Coletar todos os símbolos únicos possíveis
+  const allSymbols = ['🔴', '🔵', '🟢', '🟡', '⭐', '💎'];
+  
+  // Garantir que o primeiro item está nas opções
+  const options = [firstItem];
+  
+  // Adicionar outros símbolos únicos (sem duplicar o primeiro item)
+  const remainingSymbols = allSymbols.filter(s => s !== firstItem);
+  while (options.length < 4 && remainingSymbols.length > 0) {
+    const randomIndex = Math.floor(Math.random() * remainingSymbols.length);
+    const selectedSymbol = remainingSymbols.splice(randomIndex, 1)[0];
+    options.push(selectedSymbol);
   }
   
+  // Se ainda não tiver 4 opções, adicionar símbolos aleatórios (garantindo unicidade)
+  while (options.length < 4) {
+    const randomSymbol = allSymbols[Math.floor(Math.random() * allSymbols.length)];
+    if (!options.includes(randomSymbol)) {
+      options.push(randomSymbol);
+    }
+  }
+  
+  // Embaralhar as opções
   const shuffled = [...options].sort(() => Math.random() - 0.5);
-  const correctIndex = shuffled.indexOf(sequence[0]);
+  const correctIndex = shuffled.indexOf(firstItem);
   
   return {
     type: 'sequence',
@@ -424,7 +468,7 @@ io.on('connection', (socket) => {
     
     socket.dashboard = true;
     socket.emit('dashboard-state', {
-      players: Object.values(players),
+      players: Object.values(players).map(p => ({ name: p.name, bestScore: p.bestScore, totalGames: p.totalGames })),
       leaderboard: getGlobalLeaderboard(),
       activeGamesCount: Object.keys(activeGames).length
     });
@@ -433,11 +477,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('start-game', () => {
-    if (!socket.studentName) return;
+    if (!socket.studentName || !socket.playerId) return;
     
     const playerName = socket.studentName;
+    const playerId = socket.playerId;
     
     activeGames[socket.id] = {
+      playerId: playerId,
       playerName: playerName,
       challengeIndex: 0,
       currentScore: 0,
@@ -463,7 +509,7 @@ io.on('connection', (socket) => {
     const game = activeGames[socket.id];
     if (!game || game.status !== 'playing' || !game.currentChallenge) return;
     
-    const player = players[game.playerName];
+    const player = players[game.playerId];
     if (!player) return;
     
     const challenge = game.currentChallenge;
@@ -499,18 +545,23 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    if (socket.studentName) {
+    if (socket.studentName && socket.playerId) {
       if (activeGames[socket.id]) {
         delete activeGames[socket.id];
       }
       
+      // Remover jogador da lista de conectados
+      if (players[socket.playerId]) {
+        delete players[socket.playerId];
+      }
+      
       io.emit('player-left', {
-        players: Object.values(players),
+        players: Object.values(players).map(p => ({ name: p.name, bestScore: p.bestScore, totalGames: p.totalGames })),
         leaderboard: getGlobalLeaderboard(),
         activeGamesCount: Object.keys(activeGames).length
       });
       
-      console.log(`Jogador desconectado: ${socket.studentName} (${socket.id})`);
+      console.log(`Jogador desconectado: ${socket.studentName} (${socket.id}) - Player ID: ${socket.playerId}`);
     }
   });
 });
@@ -575,36 +626,53 @@ async function endGameForPlayer(socketId) {
   
   game.status = 'finished';
   
+  const playerId = game.playerId;
   const playerName = game.playerName;
   const finalScore = game.currentScore;
-  const previousBest = globalLeaderboard[playerName] || 0;
-  const isNewRecord = finalScore > previousBest;
   
-  if (finalScore > previousBest) {
-    globalLeaderboard[playerName] = finalScore;
+  // Verificar se é recorde para este jogador específico (playerId)
+  const player = players[playerId];
+  const playerPreviousBest = player ? player.bestScore : 0;
+  const isNewRecordForPlayer = finalScore > playerPreviousBest;
+  
+  // Verificar se é recorde global para este nome (melhor score entre todos com mesmo nome)
+  const globalBestForName = globalLeaderboard[playerName] || 0;
+  const isNewGlobalRecord = finalScore > globalBestForName;
+  
+  // Atualizar melhor score do jogador específico
+  if (player) {
+    if (isNewRecordForPlayer) {
+      player.bestScore = finalScore;
+    }
+    player.totalGames++;
   }
   
-  const player = players[playerName];
-  if (player) {
-    player.bestScore = globalLeaderboard[playerName];
-    player.totalGames++;
+  // Atualizar leaderboard global (melhor score por nome)
+  if (isNewGlobalRecord) {
+    globalLeaderboard[playerName] = finalScore;
   }
   
   try {
     if (db) {
-      await dbModule.saveGameSession(db, playerName, finalScore);
+      await dbModule.saveGameSession(db, playerId, playerName, finalScore);
       
-      if (isNewRecord) {
-        await dbModule.updatePlayerScore(db, playerName, finalScore);
+      if (isNewRecordForPlayer) {
+        await dbModule.updatePlayerScore(db, playerId, finalScore);
       }
       
-      await dbModule.incrementPlayerGames(db, playerName);
+      await dbModule.incrementPlayerGames(db, playerId);
       
-      const updatedPlayer = await dbModule.getPlayer(db, playerName);
+      const updatedPlayer = await dbModule.getPlayer(db, playerId);
       if (updatedPlayer) {
-        player.bestScore = updatedPlayer.best_score || 0;
-        player.totalGames = updatedPlayer.total_games || 0;
-        globalLeaderboard[playerName] = updatedPlayer.best_score || 0;
+        if (player) {
+          player.bestScore = updatedPlayer.best_score || 0;
+          player.totalGames = updatedPlayer.total_games || 0;
+        }
+        
+        // Atualizar leaderboard global se for o melhor score para este nome
+        if (updatedPlayer.best_score > globalBestForName) {
+          globalLeaderboard[playerName] = updatedPlayer.best_score;
+        }
       }
     }
   } catch (error) {
@@ -613,11 +681,12 @@ async function endGameForPlayer(socketId) {
   
   const socket = io.sockets.sockets.get(socketId);
   if (socket) {
+    const playerBestScore = player ? player.bestScore : 0;
     socket.emit('game-end', {
       finalScore: finalScore,
-      bestScore: globalLeaderboard[playerName],
+      bestScore: playerBestScore,
       leaderboard: getGlobalLeaderboard(),
-      isNewRecord: isNewRecord
+      isNewRecord: isNewRecordForPlayer
     });
   }
   
