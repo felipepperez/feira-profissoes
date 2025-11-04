@@ -13,6 +13,8 @@ const AdminDashboard = () => {
   const [leaderboard, setLeaderboard] = useState([]);
   const [activeGamesCount, setActiveGamesCount] = useState(0);
   const [quizUrl, setQuizUrl] = useState('');
+  const wifiSSID = 'EngSoft';
+  const wifiPassword = 'engsoft2025';
 
   const ADMIN_PASSWORD = 'admin123';
   const AUTH_KEY = 'admin_authenticated';
@@ -150,33 +152,72 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        <div className="qrcode-container">
-          <h3 style={{ marginBottom: '1rem', color: '#333', textAlign: 'center' }}>
-            📱 Escaneie para acessar o quiz
-          </h3>
-          <div style={{ 
-            background: 'white', 
-            padding: '1.5rem', 
-            borderRadius: '12px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
-          }}>
-            <QRCode 
-              value={quizUrl}
-              size={200}
-              style={{ marginBottom: '1rem' }}
-            />
-            <p style={{ 
-              fontSize: '0.85rem', 
-              color: '#666', 
-              textAlign: 'center',
-              wordBreak: 'break-all',
-              marginTop: '0.5rem'
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="qrcode-container">
+            <h3 style={{ marginBottom: '1rem', color: '#333', textAlign: 'center' }}>
+              📶 Conectar ao Wi-Fi
+            </h3>
+            <div style={{ 
+              background: 'white', 
+              padding: '1.5rem', 
+              borderRadius: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
             }}>
-              {quizUrl}
-            </p>
+              <QRCode 
+                value={`WIFI:T:WPA;S:${wifiSSID};P:${wifiPassword};;`}
+                size={200}
+                style={{ marginBottom: '1rem' }}
+              />
+              <p style={{ 
+                fontSize: '0.9rem', 
+                color: '#666', 
+                textAlign: 'center',
+                marginTop: '0.5rem',
+                fontWeight: 'bold'
+              }}>
+                Rede: {wifiSSID}
+              </p>
+              <p style={{ 
+                fontSize: '0.8rem', 
+                color: '#999', 
+                textAlign: 'center'
+              }}>
+                Senha: {wifiPassword}
+              </p>
+            </div>
+          </div>
+
+          <div className="qrcode-container">
+            <h3 style={{ marginBottom: '1rem', color: '#333', textAlign: 'center' }}>
+              📱 Acessar o Quiz
+            </h3>
+            <div style={{ 
+              background: 'white', 
+              padding: '1.5rem', 
+              borderRadius: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+            }}>
+              <QRCode 
+                value={quizUrl}
+                size={200}
+                style={{ marginBottom: '1rem' }}
+              />
+              <p style={{ 
+                fontSize: '0.85rem', 
+                color: '#666', 
+                textAlign: 'center',
+                wordBreak: 'break-all',
+                marginTop: '0.5rem'
+              }}>
+                {quizUrl}
+              </p>
+            </div>
           </div>
         </div>
       </div>
