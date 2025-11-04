@@ -71,25 +71,33 @@ const GameInterface = () => {
       });
 
       newSocket.on('game-start', ({ totalChallenges }) => {
-        setGameState(prev => ({ ...prev, status: 'playing' }));
-        setScore(0);
+        // Limpar todos os estados relacionados aos botões e respostas
         setSelectedAnswer(null);
         setAnswerSubmitted(false);
         setAnswerResult(null);
+        setScore(0);
+        setTimeLeft(0);
+        setReactionTriggered(false);
+        setGameState(prev => ({ 
+          ...prev, 
+          status: 'playing',
+          currentChallenge: null
+        }));
       });
 
       newSocket.on('challenge-start', ({ challenge, challengeNumber, totalChallenges }) => {
-        setGameState(prev => ({
-          ...prev,
-          status: 'playing',
-          currentChallenge: challenge
-        }));
+        // Limpar todos os estados relacionados aos botões e respostas antes de iniciar novo desafio
         setSelectedAnswer(null);
         setAnswerSubmitted(false);
         setAnswerResult(null);
         setTimeLeft(challenge.timeLimit);
         setReactionTriggered(false);
         setChallengeNumber(challengeNumber);
+        setGameState(prev => ({
+          ...prev,
+          status: 'playing',
+          currentChallenge: challenge
+        }));
       });
 
       newSocket.on('timer-update', (time) => {
@@ -303,45 +311,6 @@ const GameInterface = () => {
           </div>
         );
 
-      case 'sequence':
-        return (
-          <div className="challenge-container">
-            <h3 style={{ marginBottom: '1rem' }}>Observe a sequência:</h3>
-            <div className="sequence-display">
-              {challenge.sequence.map((item, index) => (
-                <span key={index} style={{ fontSize: '3rem', margin: '0 0.5rem' }}>
-                  {item}
-                </span>
-              ))}
-            </div>
-            <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>
-              Qual é o primeiro símbolo?
-            </h3>
-            <div className="question-options">
-              {challenge.options.map((option, index) => (
-                <button
-                  key={index}
-                  className={`question-option ${
-                    selectedAnswer === index ? 'selected' : ''
-                  } ${
-                    answerResult
-                      ? index === challenge.correctAnswer
-                        ? 'correct'
-                        : selectedAnswer === index && !answerResult.correct
-                        ? 'incorrect'
-                        : ''
-                      : ''
-                  }`}
-                  onClick={() => handleAnswerSelect(index)}
-                  disabled={answerSubmitted}
-                  style={{ fontSize: '2rem' }}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          </div>
-        );
 
       case 'different':
         return (

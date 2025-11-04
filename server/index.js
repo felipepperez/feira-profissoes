@@ -65,13 +65,13 @@ async function loadDataFromDatabase() {
   }
 }
 
-const TOTAL_CHALLENGES = 10;
+const TOTAL_CHALLENGES = 9;
 
 const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'];
 const colorNames = ['Vermelho', 'Verde', 'Azul', 'Amarelo', 'Magenta', 'Ciano'];
 
 function generateChallenge(index) {
-  const challengeType = Math.floor(Math.random() * 10);
+  const challengeType = Math.floor(Math.random() * 9);
   
   switch(challengeType) {
     case 0:
@@ -81,18 +81,16 @@ function generateChallenge(index) {
     case 2:
       return generateReactionChallenge();
     case 3:
-      return generateSequenceChallenge();
-    case 4:
       return generateDifferentChallenge();
-    case 5:
+    case 4:
       return generateDirectionChallenge();
-    case 6:
+    case 5:
       return generateCountChallenge();
-    case 7:
+    case 6:
       return generateGreaterLessChallenge();
-    case 8:
+    case 7:
       return generatePatternChallenge();
-    case 9:
+    case 8:
       return generateOrderChallenge();
     default:
       return generateColorChallenge();
@@ -158,69 +156,6 @@ function generateReactionChallenge() {
   };
 }
 
-function generateSequenceChallenge() {
-  // Padrões de sequência que fazem sentido
-  const patterns = [
-    // Padrão alternado simples
-    ['🔴', '🔵', '🔴', '🔵', '🔴'],
-    ['🟢', '🟡', '🟢', '🟡', '🟢'],
-    ['⭐', '💎', '⭐', '💎', '⭐'],
-    // Padrão de repetição
-    ['🔴', '🔴', '🔵', '🔵', '🔴'],
-    ['🟢', '🟢', '🟡', '🟡', '🟢'],
-    ['⭐', '⭐', '💎', '💎', '⭐'],
-    // Padrão crescente
-    ['🔴', '🔴', '🔴', '🔵', '🔵'],
-    ['🟢', '🟢', '🟢', '🟡', '🟡'],
-    // Padrão de três elementos
-    ['🔴', '🔵', '🟢', '🔴', '🔵'],
-    ['⭐', '💎', '🔴', '⭐', '💎'],
-    // Padrão mais complexo
-    ['🔴', '🔵', '🔴', '🔵', '🟢'],
-    ['🟢', '🟡', '🟢', '🟡', '🔴']
-  ];
-  
-  // Selecionar um padrão aleatório
-  const selectedPattern = patterns[Math.floor(Math.random() * patterns.length)];
-  const sequence = [...selectedPattern];
-  const firstItem = sequence[0];
-  
-  // Criar opções de resposta únicas
-  // Coletar todos os símbolos únicos possíveis
-  const allSymbols = ['🔴', '🔵', '🟢', '🟡', '⭐', '💎'];
-  
-  // Garantir que o primeiro item está nas opções
-  const options = [firstItem];
-  
-  // Adicionar outros símbolos únicos (sem duplicar o primeiro item)
-  const remainingSymbols = allSymbols.filter(s => s !== firstItem);
-  while (options.length < 4 && remainingSymbols.length > 0) {
-    const randomIndex = Math.floor(Math.random() * remainingSymbols.length);
-    const selectedSymbol = remainingSymbols.splice(randomIndex, 1)[0];
-    options.push(selectedSymbol);
-  }
-  
-  // Se ainda não tiver 4 opções, adicionar símbolos aleatórios (garantindo unicidade)
-  while (options.length < 4) {
-    const randomSymbol = allSymbols[Math.floor(Math.random() * allSymbols.length)];
-    if (!options.includes(randomSymbol)) {
-      options.push(randomSymbol);
-    }
-  }
-  
-  // Embaralhar as opções
-  const shuffled = [...options].sort(() => Math.random() - 0.5);
-  const correctIndex = shuffled.indexOf(firstItem);
-  
-  return {
-    type: 'sequence',
-    title: '🧠 Qual é o primeiro?',
-    sequence: sequence,
-    options: shuffled,
-    correctAnswer: correctIndex,
-    timeLimit: 12
-  };
-}
 
 function generateDifferentChallenge() {
   const shapes = ['🔴', '🔵', '🟢', '🟡'];
