@@ -13,7 +13,15 @@ const Dashboard = ({ onBack }) => {
   const [activeGamesCount, setActiveGamesCount] = useState(0);
 
   useEffect(() => {
-    const newSocket = io('http://localhost:3001');
+    const getSocketUrl = () => {
+      const hostname = window.location.hostname;
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://localhost:3001';
+      }
+      return `http://${hostname}:3001`;
+    };
+    
+    const newSocket = io(getSocketUrl());
     setSocket(newSocket);
 
     newSocket.emit('dashboard-join');
