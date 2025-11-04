@@ -1,0 +1,544 @@
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+const cors = require('cors');
+
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+app.use(cors());
+app.use(express.json());
+
+let players = {};
+let globalLeaderboard = {};
+let activeGames = {};
+
+const TOTAL_CHALLENGES = 10;
+
+const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'];
+const colorNames = ['Vermelho', 'Verde', 'Azul', 'Amarelo', 'Magenta', 'Ciano'];
+
+function generateChallenge(index) {
+  const challengeType = Math.floor(Math.random() * 10);
+  
+  switch(challengeType) {
+    case 0:
+      return generateColorChallenge();
+    case 1:
+      return generateMathChallenge();
+    case 2:
+      return generateReactionChallenge();
+    case 3:
+      return generateSequenceChallenge();
+    case 4:
+      return generateDifferentChallenge();
+    case 5:
+      return generateDirectionChallenge();
+    case 6:
+      return generateCountChallenge();
+    case 7:
+      return generateGreaterLessChallenge();
+    case 8:
+      return generatePatternChallenge();
+    case 9:
+      return generateOrderChallenge();
+    default:
+      return generateColorChallenge();
+  }
+}
+
+function generateColorChallenge() {
+  const targetColorIndex = Math.floor(Math.random() * colors.length);
+  const shuffledColors = [...colors].sort(() => Math.random() - 0.5);
+  
+  return {
+    type: 'color',
+    title: '🎨 Qual é esta cor?',
+    targetColor: colors[targetColorIndex],
+    targetColorName: colorNames[targetColorIndex],
+    options: shuffledColors,
+    correctAnswer: shuffledColors.indexOf(colors[targetColorIndex]),
+    timeLimit: 15
+  };
+}
+
+function generateMathChallenge() {
+  const num1 = Math.floor(Math.random() * 50) + 1;
+  const num2 = Math.floor(Math.random() * 50) + 1;
+  const operations = [
+    { op: '+', result: num1 + num2 },
+    { op: '-', result: num1 - num2 },
+    { op: '×', result: num1 * num2 }
+  ];
+  const operation = operations[Math.floor(Math.random() * operations.length)];
+  
+  const options = [];
+  const correctIndex = Math.floor(Math.random() * 4);
+  for (let i = 0; i < 4; i++) {
+    if (i === correctIndex) {
+      options.push(operation.result);
+    } else {
+      options.push(operation.result + (Math.random() < 0.5 ? -1 : 1) * (Math.floor(Math.random() * 20) + 5));
+    }
+  }
+  
+  return {
+    type: 'math',
+    title: '🔢 Resolva rapidamente!',
+    question: `${num1} ${operation.op === '×' ? '×' : operation.op} ${num2} = ?`,
+    options: options,
+    correctAnswer: correctIndex,
+    timeLimit: 12
+  };
+}
+
+function generateReactionChallenge() {
+  const shapes = ['🔴', '🔵', '🟢', '🟡', '🟣', '⚫', '⚪'];
+  const targetShape = shapes[Math.floor(Math.random() * shapes.length)];
+  
+  return {
+    type: 'reaction',
+    title: '⚡ Clique quando aparecer!',
+    targetShape: targetShape,
+    delay: Math.floor(Math.random() * 3000) + 2000,
+    correctAnswer: 0,
+    timeLimit: 10
+  };
+}
+
+function generateSequenceChallenge() {
+  const sequenceLength = 4;
+  const sequence = [];
+  const options = ['🔴', '🔵', '🟢', '🟡'];
+  
+  for (let i = 0; i < sequenceLength; i++) {
+    sequence.push(options[Math.floor(Math.random() * options.length)]);
+  }
+  
+  const shuffled = [...options].sort(() => Math.random() - 0.5);
+  const correctIndex = shuffled.indexOf(sequence[0]);
+  
+  return {
+    type: 'sequence',
+    title: '🧠 Qual é o primeiro?',
+    sequence: sequence,
+    options: shuffled,
+    correctAnswer: correctIndex,
+    timeLimit: 12
+  };
+}
+
+function generateDifferentChallenge() {
+  const shapes = ['🔴', '🔵', '🟢', '🟡'];
+  const sameShape = shapes[Math.floor(Math.random() * shapes.length)];
+  const differentShape = shapes.find(s => s !== sameShape);
+  
+  const grid = [
+    sameShape, sameShape, sameShape,
+    sameShape, differentShape, sameShape,
+    sameShape, sameShape, sameShape
+  ];
+  
+  const shuffledGrid = [...grid].sort(() => Math.random() - 0.5);
+  const correctIndex = shuffledGrid.indexOf(differentShape);
+  
+  return {
+    type: 'different',
+    title: '👁️ Encontre o diferente!',
+    grid: shuffledGrid,
+    correctAnswer: correctIndex,
+    timeLimit: 10
+  };
+}
+
+function generateDirectionChallenge() {
+  const directions = ['⬆️', '⬇️', '⬅️', '➡️'];
+  const targetDirection = directions[Math.floor(Math.random() * directions.length)];
+  
+  const shuffled = [...directions].sort(() => Math.random() - 0.5);
+  const correctIndex = shuffled.indexOf(targetDirection);
+  
+  return {
+    type: 'direction',
+    title: '🧭 Qual é esta direção?',
+    targetDirection: targetDirection,
+    options: shuffled,
+    correctAnswer: correctIndex,
+    timeLimit: 8
+  };
+}
+
+function generateCountChallenge() {
+  const shapes = ['🔴', '🔵', '🟢', '🟡', '⭐', '💎'];
+  const count = Math.floor(Math.random() * 9) + 1;
+  
+  const shape = shapes[Math.floor(Math.random() * shapes.length)];
+  const grid = Array(count).fill(shape);
+  
+  const options = [];
+  const correctIndex = Math.floor(Math.random() * 4);
+  for (let i = 0; i < 4; i++) {
+    if (i === correctIndex) {
+      options.push(count);
+    } else {
+      let wrongCount = count;
+      while (wrongCount === count) {
+        wrongCount = Math.floor(Math.random() * 10) + 1;
+      }
+      options.push(wrongCount);
+    }
+  }
+  
+  return {
+    type: 'count',
+    title: '🔢 Conte rapidamente!',
+    grid: grid,
+    shape: shape,
+    options: options,
+    correctAnswer: correctIndex,
+    timeLimit: 12
+  };
+}
+
+function generateGreaterLessChallenge() {
+  const num1 = Math.floor(Math.random() * 100) + 1;
+  const num2 = Math.floor(Math.random() * 100) + 1;
+  const operations = ['>', '<'];
+  const operation = operations[Math.floor(Math.random() * operations.length)];
+  
+  let correctAnswer;
+  if (operation === '>') {
+    correctAnswer = num1 > num2 ? 0 : 1;
+  } else {
+    correctAnswer = num1 < num2 ? 0 : 1;
+  }
+  
+  return {
+    type: 'greaterless',
+    title: '⚖️ Qual é maior ou menor?',
+    question: `${num1} ${operation} ${num2}?`,
+    num1: num1,
+    num2: num2,
+    operation: operation,
+    options: ['Verdadeiro', 'Falso'],
+    correctAnswer: correctAnswer,
+    timeLimit: 10
+  };
+}
+
+function generatePatternChallenge() {
+  const patterns = [
+    { pattern: ['🔴', '🔵', '🔴', '🔵'], next: '🔴' },
+    { pattern: ['⭐', '⭐', '💎'], next: '⭐' },
+    { pattern: ['🟢', '🟡', '🟢', '🟡', '🟢'], next: '🟡' },
+    { pattern: ['🔴', '🔴', '🔵'], next: '🔴' },
+    { pattern: ['💎', '⭐', '💎', '⭐'], next: '💎' },
+    { pattern: ['🔵', '🔵', '🔴'], next: '🔵' }
+  ];
+  
+  const selectedPattern = patterns[Math.floor(Math.random() * patterns.length)];
+  const allSymbols = [...new Set([...selectedPattern.pattern, selectedPattern.next, '🟢', '🟡', '⭐', '💎'])];
+  
+  const options = [];
+  const correctIndex = Math.floor(Math.random() * 4);
+  for (let i = 0; i < 4; i++) {
+    if (i === correctIndex) {
+      options.push(selectedPattern.next);
+    } else {
+      const wrongOption = allSymbols[Math.floor(Math.random() * allSymbols.length)];
+      options.push(wrongOption);
+    }
+  }
+  
+  return {
+    type: 'pattern',
+    title: '🔍 Complete o padrão!',
+    pattern: selectedPattern.pattern,
+    options: options,
+    correctAnswer: correctIndex,
+    timeLimit: 15
+  };
+}
+
+function generateOrderChallenge() {
+  const numbers = [];
+  const start = Math.floor(Math.random() * 50) + 1;
+  for (let i = 0; i < 4; i++) {
+    numbers.push(start + i);
+  }
+  
+  const shuffled = [...numbers].sort(() => Math.random() - 0.5);
+  
+  const orderTypes = ['maior', 'menor'];
+  const orderType = orderTypes[Math.floor(Math.random() * orderTypes.length)];
+  
+  let correctAnswer;
+  if (orderType === 'maior') {
+    const max = Math.max(...numbers);
+    correctAnswer = shuffled.indexOf(max);
+  } else {
+    const min = Math.min(...numbers);
+    correctAnswer = shuffled.indexOf(min);
+  }
+  
+  return {
+    type: 'order',
+    title: `📊 Qual é o ${orderType === 'maior' ? 'maior' : 'menor'} número?`,
+    numbers: shuffled,
+    orderType: orderType,
+    options: shuffled.map(n => n.toString()),
+    correctAnswer: correctAnswer,
+    timeLimit: 12
+  };
+}
+
+function getGlobalLeaderboard() {
+  return Object.entries(globalLeaderboard)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 50)
+    .map(([name, score]) => ({ name, score }));
+}
+
+io.on('connection', (socket) => {
+  console.log(`Cliente conectado: ${socket.id}`);
+
+  socket.on('student-join', (studentName) => {
+    socket.studentName = studentName || `Jogador ${socket.id.slice(0, 6)}`;
+    
+    if (!players[socket.studentName]) {
+      players[socket.studentName] = {
+        name: socket.studentName,
+        bestScore: globalLeaderboard[socket.studentName] || 0,
+        totalGames: 0
+      };
+    }
+    
+    if (!globalLeaderboard[socket.studentName]) {
+      globalLeaderboard[socket.studentName] = 0;
+    }
+    
+    socket.emit('welcome', {
+      name: socket.studentName,
+      bestScore: globalLeaderboard[socket.studentName],
+      leaderboard: getGlobalLeaderboard()
+    });
+    
+    io.emit('player-joined', {
+      players: Object.values(players),
+      leaderboard: getGlobalLeaderboard()
+    });
+    
+    console.log(`Jogador conectado: ${socket.studentName} (${socket.id})`);
+  });
+
+  socket.on('dashboard-join', ({ password }) => {
+    const ADMIN_PASSWORD = 'admin123';
+    if (password !== ADMIN_PASSWORD) {
+      socket.emit('auth-error', { message: 'Senha incorreta!' });
+      return;
+    }
+    
+    socket.dashboard = true;
+    socket.emit('dashboard-state', {
+      players: Object.values(players),
+      leaderboard: getGlobalLeaderboard(),
+      activeGamesCount: Object.keys(activeGames).length
+    });
+    
+    console.log(`Dashboard conectado: ${socket.id}`);
+  });
+
+  socket.on('start-game', () => {
+    if (!socket.studentName) return;
+    
+    const playerName = socket.studentName;
+    
+    activeGames[socket.id] = {
+      playerName: playerName,
+      challengeIndex: 0,
+      currentScore: 0,
+      status: 'playing',
+      currentChallenge: null,
+      roundStartTime: null,
+      timer: null
+    };
+    
+    socket.emit('game-start', {
+      totalChallenges: TOTAL_CHALLENGES
+    });
+    
+    startChallengeForPlayer(socket.id);
+    
+    io.emit('game-status-update', {
+      activeGamesCount: Object.keys(activeGames).length,
+      leaderboard: getGlobalLeaderboard()
+    });
+  });
+
+  socket.on('submit-answer', (data) => {
+    const game = activeGames[socket.id];
+    if (!game || game.status !== 'playing' || !game.currentChallenge) return;
+    
+    const player = players[game.playerName];
+    if (!player) return;
+    
+    const challenge = game.currentChallenge;
+    const isCorrect = data.answerIndex === challenge.correctAnswer;
+    
+    if (game.timer) {
+      clearInterval(game.timer);
+      game.timer = null;
+    }
+    
+    let pointsEarned = 0;
+    if (isCorrect) {
+      const timeElapsed = Date.now() - game.roundStartTime;
+      const maxPoints = 1000;
+      pointsEarned = Math.max(100, Math.floor(maxPoints * (1 - timeElapsed / (challenge.timeLimit * 1000))));
+      game.currentScore += pointsEarned;
+    }
+    
+    socket.emit('your-answer-result', {
+      correct: isCorrect,
+      score: game.currentScore,
+      pointsEarned: pointsEarned
+    });
+    
+    setTimeout(() => {
+      game.challengeIndex++;
+      if (game.challengeIndex >= TOTAL_CHALLENGES) {
+        endGameForPlayer(socket.id);
+      } else {
+        startChallengeForPlayer(socket.id);
+      }
+    }, 2000);
+  });
+
+  socket.on('disconnect', () => {
+    if (socket.studentName) {
+      if (activeGames[socket.id]) {
+        delete activeGames[socket.id];
+      }
+      
+      io.emit('player-left', {
+        players: Object.values(players),
+        leaderboard: getGlobalLeaderboard(),
+        activeGamesCount: Object.keys(activeGames).length
+      });
+      
+      console.log(`Jogador desconectado: ${socket.studentName} (${socket.id})`);
+    }
+  });
+});
+
+function startChallengeForPlayer(socketId) {
+  const game = activeGames[socketId];
+  if (!game) return;
+  
+  const challenge = generateChallenge(game.challengeIndex);
+  game.currentChallenge = challenge;
+  game.roundStartTime = Date.now();
+  
+  const socket = io.sockets.sockets.get(socketId);
+  if (!socket) return;
+  
+  socket.emit('challenge-start', {
+    challenge: challenge,
+    challengeNumber: game.challengeIndex + 1,
+    totalChallenges: TOTAL_CHALLENGES
+  });
+  
+  let timeLeft = challenge.timeLimit;
+  
+  if (challenge.type === 'reaction') {
+    setTimeout(() => {
+      socket.emit('reaction-trigger', {
+        targetShape: challenge.targetShape
+      });
+    }, challenge.delay);
+  }
+  
+  game.timer = setInterval(() => {
+    timeLeft--;
+    socket.emit('timer-update', timeLeft);
+    
+    if (timeLeft <= 0) {
+      if (game.timer) {
+        clearInterval(game.timer);
+        game.timer = null;
+      }
+      
+      game.challengeIndex++;
+      if (game.challengeIndex >= TOTAL_CHALLENGES) {
+        endGameForPlayer(socketId);
+      } else {
+        setTimeout(() => {
+          startChallengeForPlayer(socketId);
+        }, 1000);
+      }
+    }
+  }, 1000);
+}
+
+function endGameForPlayer(socketId) {
+  const game = activeGames[socketId];
+  if (!game) return;
+  
+  if (game.timer) {
+    clearInterval(game.timer);
+    game.timer = null;
+  }
+  
+  game.status = 'finished';
+  
+  const playerName = game.playerName;
+  const finalScore = game.currentScore;
+  const previousBest = globalLeaderboard[playerName] || 0;
+  const isNewRecord = finalScore > previousBest;
+  
+  if (finalScore > previousBest) {
+    globalLeaderboard[playerName] = finalScore;
+  }
+  
+  const player = players[playerName];
+  if (player) {
+    player.bestScore = globalLeaderboard[playerName];
+    player.totalGames++;
+  }
+  
+  const socket = io.sockets.sockets.get(socketId);
+  if (socket) {
+    socket.emit('game-end', {
+      finalScore: finalScore,
+      bestScore: globalLeaderboard[playerName],
+      leaderboard: getGlobalLeaderboard(),
+      isNewRecord: isNewRecord
+    });
+  }
+  
+  delete activeGames[socketId];
+  
+  io.emit('game-status-update', {
+    activeGamesCount: Object.keys(activeGames).length,
+    leaderboard: getGlobalLeaderboard()
+  });
+}
+
+setInterval(() => {
+  io.emit('leaderboard-update', {
+    leaderboard: getGlobalLeaderboard(),
+    activeGamesCount: Object.keys(activeGames).length
+  });
+}, 2000);
+
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
+  console.log(`Acesse http://localhost:${PORT}`);
+});
