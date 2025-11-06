@@ -421,6 +421,7 @@ io.on('connection', (socket) => {
       status: 'playing',
       currentChallenge: null,
       roundStartTime: null,
+      reactionTriggerTime: null,
       timer: null
     };
     
@@ -453,7 +454,12 @@ io.on('connection', (socket) => {
     
     let pointsEarned = 0;
     if (isCorrect) {
-      const timeElapsed = Date.now() - game.roundStartTime;
+      let timeElapsed;
+      if (challenge.type === 'reaction' && game.reactionTriggerTime) {
+        timeElapsed = Date.now() - game.reactionTriggerTime;
+      } else {
+        timeElapsed = Date.now() - game.roundStartTime;
+      }
       const maxPoints = 1000;
       pointsEarned = Math.max(100, Math.floor(maxPoints * (1 - timeElapsed / (challenge.timeLimit * 1000))));
       game.currentScore += pointsEarned;
@@ -499,6 +505,7 @@ function startChallengeForPlayer(socketId) {
   const challenge = generateChallenge(game.challengeIndex);
   game.currentChallenge = challenge;
   game.roundStartTime = Date.now();
+  game.reactionTriggerTime = null;
   
   const socket = io.sockets.sockets.get(socketId);
   if (!socket) return;
@@ -513,6 +520,7 @@ function startChallengeForPlayer(socketId) {
   
   if (challenge.type === 'reaction') {
     setTimeout(() => {
+      game.reactionTriggerTime = Date.now();
       socket.emit('reaction-trigger', {
         targetShape: challenge.targetShape
       });
