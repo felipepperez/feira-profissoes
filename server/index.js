@@ -71,7 +71,7 @@ const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'
 const colorNames = ['Vermelho', 'Verde', 'Azul', 'Amarelo', 'Magenta', 'Ciano'];
 
 function generateChallenge(index) {
-  const challengeType = Math.floor(Math.random() * 9);
+  const challengeType = Math.floor(Math.random() * 8);
   
   switch(challengeType) {
     case 0:
@@ -89,8 +89,6 @@ function generateChallenge(index) {
     case 6:
       return generateGreaterLessChallenge();
     case 7:
-      return generatePatternChallenge();
-    case 8:
       return generateOrderChallenge();
     default:
       return generateColorChallenge();
@@ -255,39 +253,39 @@ function generateGreaterLessChallenge() {
   };
 }
 
-function generatePatternChallenge() {
-  const patterns = [
-    { pattern: ['🔴', '🔵', '🔴', '🔵'], next: '🔴' },
-    { pattern: ['⭐', '⭐', '💎'], next: '⭐' },
-    { pattern: ['🟢', '🟡', '🟢', '🟡', '🟢'], next: '🟡' },
-    { pattern: ['🔴', '🔴', '🔵'], next: '🔴' },
-    { pattern: ['💎', '⭐', '💎', '⭐'], next: '💎' },
-    { pattern: ['🔵', '🔵', '🔴'], next: '🔵' }
-  ];
-  
-  const selectedPattern = patterns[Math.floor(Math.random() * patterns.length)];
-  const allSymbols = [...new Set([...selectedPattern.pattern, selectedPattern.next, '🟢', '🟡', '⭐', '💎'])];
-  
-  const options = [];
-  const correctIndex = Math.floor(Math.random() * 4);
-  for (let i = 0; i < 4; i++) {
-    if (i === correctIndex) {
-      options.push(selectedPattern.next);
-    } else {
-      const wrongOption = allSymbols[Math.floor(Math.random() * allSymbols.length)];
-      options.push(wrongOption);
-    }
-  }
-  
-  return {
-    type: 'pattern',
-    title: '🔍 Complete o padrão!',
-    pattern: selectedPattern.pattern,
-    options: options,
-    correctAnswer: correctIndex,
-    timeLimit: 15
-  };
-}
+// function generatePatternChallenge() {
+//   const patterns = [
+//     { pattern: ['🔴', '🔵', '🔴', '🔵'], next: '🔴' },
+//     { pattern: ['⭐', '⭐', '💎'], next: '⭐' },
+//     { pattern: ['🟢', '🟡', '🟢', '🟡', '🟢'], next: '🟡' },
+//     { pattern: ['🔴', '🔴', '🔵'], next: '🔴' },
+//     { pattern: ['💎', '⭐', '💎', '⭐'], next: '💎' },
+//     { pattern: ['🔵', '🔵', '🔴'], next: '🔵' }
+//   ];
+//   
+//   const selectedPattern = patterns[Math.floor(Math.random() * patterns.length)];
+//   const allSymbols = [...new Set([...selectedPattern.pattern, selectedPattern.next, '🟢', '🟡', '⭐', '💎'])];
+//   
+//   const options = [];
+//   const correctIndex = Math.floor(Math.random() * 4);
+//   for (let i = 0; i < 4; i++) {
+//     if (i === correctIndex) {
+//       options.push(selectedPattern.next);
+//     } else {
+//       const wrongOption = allSymbols[Math.floor(Math.random() * allSymbols.length)];
+//       options.push(wrongOption);
+//     }
+//   }
+//   
+//   return {
+//     type: 'pattern',
+//     title: '🔍 Complete o padrão!',
+//     pattern: selectedPattern.pattern,
+//     options: options,
+//     correctAnswer: correctIndex,
+//     timeLimit: 15
+//   };
+// }
 
 function generateOrderChallenge() {
   const numbers = [];

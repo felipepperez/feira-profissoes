@@ -455,46 +455,46 @@ const GameInterface = () => {
           </div>
         );
 
-      case 'pattern':
-        return (
-          <div className="challenge-container">
-            <h3 style={{ marginBottom: '1rem' }}>Complete o padrão!</h3>
-            <div className="sequence-display">
-              {challenge.pattern.map((item, index) => (
-                <span key={index} style={{ fontSize: '3rem', margin: '0 0.5rem' }}>
-                  {item}
-                </span>
-              ))}
-              <span style={{ fontSize: '3rem', margin: '0 0.5rem', color: '#667eea' }}>?</span>
-            </div>
-            <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>
-              Qual símbolo completa o padrão?
-            </h3>
-            <div className="question-options">
-              {challenge.options.map((option, index) => (
-                <button
-                  key={index}
-                  className={`question-option ${
-                    selectedAnswer === index ? 'selected' : ''
-                  } ${
-                    answerResult
-                      ? index === challenge.correctAnswer
-                        ? 'correct'
-                        : selectedAnswer === index && !answerResult.correct
-                        ? 'incorrect'
-                        : ''
-                      : ''
-                  }`}
-                  onClick={() => handleAnswerSelect(index)}
-                  disabled={answerSubmitted}
-                  style={{ fontSize: '2rem' }}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          </div>
-        );
+      // case 'pattern':
+      //   return (
+      //     <div className="challenge-container">
+      //       <h3 style={{ marginBottom: '1rem' }}>Complete o padrão!</h3>
+      //       <div className="sequence-display">
+      //         {challenge.pattern.map((item, index) => (
+      //           <span key={index} style={{ fontSize: '3rem', margin: '0 0.5rem' }}>
+      //             {item}
+      //           </span>
+      //         ))}
+      //         <span style={{ fontSize: '3rem', margin: '0 0.5rem', color: '#667eea' }}>?</span>
+      //       </div>
+      //       <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>
+      //         Qual símbolo completa o padrão?
+      //       </h3>
+      //       <div className="question-options">
+      //         {challenge.options.map((option, index) => (
+      //           <button
+      //             key={index}
+      //             className={`question-option ${
+      //               selectedAnswer === index ? 'selected' : ''
+      //             } ${
+      //               answerResult
+      //                 ? index === challenge.correctAnswer
+      //                   ? 'correct'
+      //                   : selectedAnswer === index && !answerResult.correct
+      //                   ? 'incorrect'
+      //                   : ''
+      //                 : ''
+      //             }`}
+      //             onClick={() => handleAnswerSelect(index)}
+      //             disabled={answerSubmitted}
+      //             style={{ fontSize: '2rem' }}
+      //           >
+      //             {option}
+      //           </button>
+      //         ))}
+      //       </div>
+      //     </div>
+      //   );
 
       case 'order':
         return (
