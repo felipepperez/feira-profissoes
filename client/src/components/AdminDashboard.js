@@ -12,6 +12,7 @@ const AdminDashboard = () => {
   const [players, setPlayers] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [activeGamesCount, setActiveGamesCount] = useState(0);
+  const [activeGames, setActiveGames] = useState([]);
   const [quizUrl, setQuizUrl] = useState('');
   const wifiSSID = 'EngSoft';
   const wifiPassword = 'engsoft2025';
@@ -59,10 +60,11 @@ const AdminDashboard = () => {
         newSocket.emit('dashboard-join', { password: ADMIN_PASSWORD });
       });
 
-      newSocket.on('dashboard-state', ({ players, leaderboard, activeGamesCount }) => {
+      newSocket.on('dashboard-state', ({ players, leaderboard, activeGamesCount, activeGames }) => {
         setPlayers(players || []);
         setLeaderboard(leaderboard || []);
         setActiveGamesCount(activeGamesCount || 0);
+        setActiveGames(activeGames || []);
       });
 
       newSocket.on('player-joined', ({ players, leaderboard }) => {
@@ -70,20 +72,23 @@ const AdminDashboard = () => {
         setLeaderboard(leaderboard || []);
       });
 
-      newSocket.on('player-left', ({ players, leaderboard, activeGamesCount }) => {
+      newSocket.on('player-left', ({ players, leaderboard, activeGamesCount, activeGames }) => {
         setPlayers(players || []);
         setLeaderboard(leaderboard || []);
         setActiveGamesCount(activeGamesCount || 0);
+        setActiveGames(activeGames || []);
       });
 
-      newSocket.on('game-status-update', ({ activeGamesCount, leaderboard }) => {
+      newSocket.on('game-status-update', ({ activeGamesCount, leaderboard, activeGames }) => {
         setActiveGamesCount(activeGamesCount || 0);
         setLeaderboard(leaderboard || []);
+        setActiveGames(activeGames || []);
       });
 
-      newSocket.on('leaderboard-update', ({ leaderboard, activeGamesCount }) => {
+      newSocket.on('leaderboard-update', ({ leaderboard, activeGamesCount, activeGames }) => {
         setLeaderboard(leaderboard || []);
         setActiveGamesCount(activeGamesCount || 0);
+        setActiveGames(activeGames || []);
       });
 
       newSocket.on('auth-error', ({ message }) => {
@@ -169,8 +174,26 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {leaderboard.length > 0 && (
+          {activeGames.length > 0 && (
             <div className="leaderboard" style={{ marginTop: '1.5rem' }}>
+              <h3>🎮 Jogadores em Jogo (Tempo Real)</h3>
+              {activeGames.map((game, index) => (
+                <div key={index} className="leaderboard-item" style={{ backgroundColor: index === 0 ? '#f0f8ff' : 'transparent' }}>
+                  <span>
+                    {index === 0 && '🔥'}
+                    {' '}
+                    {game.playerName} - Desafio {game.challengeNumber}
+                  </span>
+                  <span style={{ fontWeight: 'bold', color: index === 0 ? '#667eea' : '#333' }}>
+                    {game.currentScore} pts
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {leaderboard.length > 0 && (
+            <div className="leaderboard" style={{ marginTop: activeGames.length > 0 ? '1.5rem' : '1.5rem' }}>
               <h3>🏆 Ranking Geral</h3>
               {leaderboard.map((entry, index) => (
                 <div key={index} className="leaderboard-item">

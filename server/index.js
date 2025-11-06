@@ -326,6 +326,17 @@ function getGlobalLeaderboard() {
     .map(([name, score]) => ({ name, score }));
 }
 
+function getActiveGamesInfo() {
+  return Object.values(activeGames)
+    .filter(game => game.status === 'playing')
+    .map(game => ({
+      playerName: game.playerName,
+      currentScore: game.currentScore,
+      challengeNumber: game.challengeIndex + 1
+    }))
+    .sort((a, b) => b.currentScore - a.currentScore);
+}
+
 io.on('connection', (socket) => {
   console.log(`Cliente conectado: ${socket.id}`);
 
@@ -401,7 +412,8 @@ io.on('connection', (socket) => {
     socket.emit('dashboard-state', {
       players: Object.values(players),
       leaderboard: getGlobalLeaderboard(),
-      activeGamesCount: Object.keys(activeGames).length
+      activeGamesCount: Object.keys(activeGames).length,
+      activeGames: getActiveGamesInfo()
     });
     
     console.log(`Dashboard conectado: ${socket.id}`);
@@ -431,7 +443,8 @@ io.on('connection', (socket) => {
     
     io.emit('game-status-update', {
       activeGamesCount: Object.keys(activeGames).length,
-      leaderboard: getGlobalLeaderboard()
+      leaderboard: getGlobalLeaderboard(),
+      activeGames: getActiveGamesInfo()
     });
   });
 
@@ -469,6 +482,12 @@ io.on('connection', (socket) => {
       pointsEarned: pointsEarned
     });
     
+    io.emit('game-status-update', {
+      activeGamesCount: Object.keys(activeGames).length,
+      leaderboard: getGlobalLeaderboard(),
+      activeGames: getActiveGamesInfo()
+    });
+    
     setTimeout(() => {
       game.challengeIndex++;
       if (game.challengeIndex >= TOTAL_CHALLENGES) {
@@ -488,7 +507,8 @@ io.on('connection', (socket) => {
       io.emit('player-left', {
         players: Object.values(players),
         leaderboard: getGlobalLeaderboard(),
-        activeGamesCount: Object.keys(activeGames).length
+        activeGamesCount: Object.keys(activeGames).length,
+        activeGames: getActiveGamesInfo()
       });
       
       console.log(`Jogador desconectado: ${socket.studentName} (${socket.id})`);
@@ -608,14 +628,16 @@ async function endGameForPlayer(socketId) {
   
   io.emit('game-status-update', {
     activeGamesCount: Object.keys(activeGames).length,
-    leaderboard: getGlobalLeaderboard()
+    leaderboard: getGlobalLeaderboard(),
+    activeGames: getActiveGamesInfo()
   });
 }
 
 setInterval(() => {
   io.emit('leaderboard-update', {
     leaderboard: getGlobalLeaderboard(),
-    activeGamesCount: Object.keys(activeGames).length
+    activeGamesCount: Object.keys(activeGames).length,
+    activeGames: getActiveGamesInfo()
   });
 }, 2000);
 
